@@ -6,8 +6,8 @@ import logging
 import tkinter as tk
 from tkinter import messagebox
 
-KILL_HOTKEY = '<ctrl>+<alt>+f4'
-SUSPEND_HOTKEY = '<ctrl>+<alt>+f3'
+KILL_HOTKEY = '<ctrl>+<alt>+<f4>'
+SUSPEND_HOTKEY = '<ctrl>+<alt>+<f3>'
 
 class TrayIcon:
     def __init__(self):
@@ -25,8 +25,8 @@ class TrayIcon:
         messagebox.showinfo("About Process Killer/Suspender",
                             "Process Killer/Suspender\n"
                             "Version 1.0\n\n"
-                            f"Kill Hotkey: Ctrl+Alt+F4\n"
-                            f"Suspend/Resume Hotkey: Ctrl+Alt+F3\n\n"
+                            "Kill Hotkey: Ctrl+Alt+F4\n"
+                            "Suspend/Resume Hotkey: Ctrl+Alt+F3\n\n"
                             "Created by Yakov")
 
     def exit_app(self):

@@ -31,6 +31,7 @@ class HotkeyHandler:
             kill_hotkey: self.on_kill_hotkey,
             suspend_hotkey: self.on_suspend_hotkey
         })
+        logging.info(f"Hotkeys set - Kill: {kill_hotkey}, Suspend/Resume: {suspend_hotkey}")
 
     def on_kill_hotkey(self):
         pid = get_focused_window_pid()
