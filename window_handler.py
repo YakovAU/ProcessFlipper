@@ -15,18 +15,24 @@ def get_focused_window_pid():
 class HotkeyHandler:
     def __init__(self):
         self.suspended_pids = set()
-        self.listener = keyboard.Listener(on_press=self.on_press)
+        self.current_keys = set()
+        self.listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
 
     def on_press(self, key):
         try:
             logging.debug(f"Key pressed: {key}")
+            self.current_keys.add(key)
             logging.debug(f"Current keys: {self.current_keys}")
             
-            if key == keyboard.Key.f4 and keyboard.Key.ctrl in self.current_keys and keyboard.Key.alt in self.current_keys:
+            if (keyboard.Key.f4 in self.current_keys and 
+                keyboard.Key.ctrl_l in self.current_keys and 
+                keyboard.Key.alt_l in self.current_keys):
                 pid = get_focused_window_pid()
                 logging.info(f"Attempting to kill process with PID: {pid}")
                 process_killer.force_kill_process(pid)
-            elif key == keyboard.Key.f3 and keyboard.Key.ctrl in self.current_keys and keyboard.Key.alt in self.current_keys:
+            elif (keyboard.Key.f3 in self.current_keys and 
+                  keyboard.Key.ctrl_l in self.current_keys and 
+                  keyboard.Key.alt_l in self.current_keys):
                 pid = get_focused_window_pid()
                 logging.info(f"Ctrl + Alt + F3 pressed. Focused window PID: {pid}")
                 if pid in self.suspended_pids:
@@ -43,15 +49,18 @@ class HotkeyHandler:
         except Exception as e:
             logging.error(f"Error in on_press: {e}", exc_info=True)
 
+    def on_release(self, key):
+        try:
+            self.current_keys.discard(key)
+            logging.debug(f"Key released: {key}")
+            logging.debug(f"Current keys after release: {self.current_keys}")
+        except Exception as e:
+            logging.error(f"Error in on_release: {e}", exc_info=True)
+
     def start(self):
-        with keyboard.Events() as events:
-            self.current_keys = set()
-            for event in events:
-                if isinstance(event, keyboard.Events.Press):
-                    self.current_keys.add(event.key)
-                    self.on_press(event.key)
-                elif isinstance(event, keyboard.Events.Release):
-                    self.current_keys.discard(event.key)
+        logging.info("Starting hotkey listener...")
+        with self.listener:
+            self.listener.join()
 
 def run_hotkey_handler():
     handler = HotkeyHandler()
