@@ -15,6 +15,7 @@ cdef extern from "Windows.h":
     ctypedef void * FARPROC
 
     HANDLE OpenProcess(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId)
+    HANDLE OpenThread(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwThreadId)
     BOOL CloseHandle(HANDLE hObject)
     DWORD GetLastError()
     HMODULE LoadLibraryA(LPCSTR lpLibFileName)
@@ -104,17 +105,26 @@ cdef suspend_resume_process_internal(int pid, bint suspend):
         raise OSError(get_error_message(error).decode('utf-8'))
 
     cdef THREADENTRY32 te
+    cdef BOOL success
+    cdef HANDLE h_thread
+    cdef DWORD result
+
     te.dwSize = sizeof(THREADENTRY32)
-    cdef BOOL success = Thread32First(h_snapshot, &te)
+    success = Thread32First(h_snapshot, &te)
 
     while success:
         if te.th32OwnerProcessID == pid:
-            cdef HANDLE h_thread = OpenProcess(THREAD_SUSPEND_RESUME, False, te.th32ThreadID)
+            h_thread = OpenThread(THREAD_SUSPEND_RESUME, False, te.th32ThreadID)
             if h_thread != NULL:
                 if suspend:
-                    SuspendThread(h_thread)
+                    result = SuspendThread(h_thread)
                 else:
-                    ResumeThread(h_thread)
+                    result = ResumeThread(h_thread)
+                if result == -1:
+                    error = GetLastError()
+                    CloseHandle(h_thread)
+                    CloseHandle(h_snapshot)
+                    raise OSError(get_error_message(error).decode('utf-8'))
                 CloseHandle(h_thread)
         success = Thread32Next(h_snapshot, &te)
 
