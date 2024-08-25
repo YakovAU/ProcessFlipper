@@ -24,17 +24,9 @@ def get_focused_window_pid():
 class HotkeyHandler:
     def __init__(self):
         self.suspended_pids = set()
-        self.kill_hotkey = None
-        self.suspend_hotkey = None
         self.listener = None
 
     def set_hotkeys(self, kill_hotkey, suspend_hotkey):
-        self.kill_hotkey = keyboard.HotKey.parse(kill_hotkey)
-        self.suspend_hotkey = keyboard.HotKey.parse(suspend_hotkey)
-        
-        if self.listener:
-            self.stop()
-        
         self.listener = keyboard.GlobalHotKeys({
             kill_hotkey: self.on_kill_hotkey,
             suspend_hotkey: self.on_suspend_hotkey
