@@ -22,15 +22,32 @@ cdef extern from "Windows.h":
     BOOL FreeLibrary(HMODULE hLibModule)
     DWORD FormatMessageA(DWORD dwFlags, void * lpSource, DWORD dwMessageId, DWORD dwLanguageId, char * lpBuffer,
                          DWORD nSize, void * Arguments)
+    DWORD SuspendThread(HANDLE hThread)
+    DWORD ResumeThread(HANDLE hThread)
+    HANDLE CreateToolhelp32Snapshot(DWORD dwFlags, DWORD th32ProcessID)
+    BOOL Thread32First(HANDLE hSnapshot, void * lpte)
+    BOOL Thread32Next(HANDLE hSnapshot, void * lpte)
 
 ctypedef LONG NTSTATUS
 ctypedef NTSTATUS (*NtTerminateProcessFunc)(HANDLE ProcessHandle, NTSTATUS ExitStatus)
 
 PROCESS_TERMINATE = 0x0001
+PROCESS_SUSPEND_RESUME = 0x0800
+THREAD_SUSPEND_RESUME = 0x0002
 STATUS_SUCCESS = 0
 FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
 FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100
 LANG_NEUTRAL = 0x00
+TH32CS_SNAPTHREAD = 0x00000004
+
+cdef struct THREADENTRY32:
+    DWORD dwSize
+    DWORD cntUsage
+    DWORD th32ThreadID
+    DWORD th32OwnerProcessID
+    LONG tpBasePri
+    LONG tpDeltaPri
+    DWORD dwFlags
 
 cdef bytes int_to_bytes(int value):
     cdef bytes result = str(value).encode('ascii')
@@ -80,17 +97,37 @@ cdef force_kill_process_internal(int pid):
         CloseHandle(process_handle)
         FreeLibrary(ntdll)
 
+cdef suspend_resume_process_internal(int pid, bint suspend):
+    cdef HANDLE h_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0)
+    if h_snapshot == NULL:
+        error = GetLastError()
+        raise OSError(get_error_message(error).decode('utf-8'))
+
+    cdef THREADENTRY32 te
+    te.dwSize = sizeof(THREADENTRY32)
+    cdef BOOL success = Thread32First(h_snapshot, &te)
+
+    while success:
+        if te.th32OwnerProcessID == pid:
+            cdef HANDLE h_thread = OpenProcess(THREAD_SUSPEND_RESUME, False, te.th32ThreadID)
+            if h_thread != NULL:
+                if suspend:
+                    SuspendThread(h_thread)
+                else:
+                    ResumeThread(h_thread)
+                CloseHandle(h_thread)
+        success = Thread32Next(h_snapshot, &te)
+
+    CloseHandle(h_snapshot)
+
 def force_kill_process(int pid):
     force_kill_process_internal(pid)
     print(f"Process with PID {pid} has been forcefully terminated.")
 
-def main():
-    pid = int(input("Enter the PID of the process to kill: "))
-    try:
-        force_kill_process(pid)
-    except OSError as e:
-        print(f"Failed to kill process: {e}")
-        print("Note: This tool may require administrator privileges to work effectively.")
+def suspend_process(int pid):
+    suspend_resume_process_internal(pid, True)
+    print(f"Process with PID {pid} has been suspended.")
 
-if __name__ == "__main__":
-    main()
+def resume_process(int pid):
+    suspend_resume_process_internal(pid, False)
+    print(f"Process with PID {pid} has been resumed.")
