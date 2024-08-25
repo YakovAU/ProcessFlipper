@@ -12,56 +12,62 @@ def get_focused_window_pid():
     _, pid = win32process.GetWindowThreadProcessId(hwnd)
     return pid
 
+from pynput import keyboard
+import process_killer
+import logging
+
+def get_focused_window_pid():
+    hwnd = win32gui.GetForegroundWindow()
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    return pid
+
 class HotkeyHandler:
     def __init__(self):
         self.suspended_pids = set()
-        self.current_keys = set()
-        self.listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
+        self.kill_hotkey = None
+        self.suspend_hotkey = None
+        self.listener = None
 
-    def on_press(self, key):
-        try:
-            logging.debug(f"Key pressed: {key}")
-            self.current_keys.add(key)
-            logging.debug(f"Current keys: {self.current_keys}")
-            
-            if (keyboard.Key.f4 in self.current_keys and 
-                keyboard.Key.ctrl_l in self.current_keys and 
-                keyboard.Key.alt_l in self.current_keys):
-                pid = get_focused_window_pid()
-                logging.info(f"Attempting to kill process with PID: {pid}")
-                process_killer.force_kill_process(pid)
-            elif (keyboard.Key.f3 in self.current_keys and 
-                  keyboard.Key.ctrl_l in self.current_keys and 
-                  keyboard.Key.alt_l in self.current_keys):
-                pid = get_focused_window_pid()
-                logging.info(f"Ctrl + Alt + F3 pressed. Focused window PID: {pid}")
-                if pid in self.suspended_pids:
-                    logging.info(f"Attempting to resume process with PID: {pid}")
-                    process_killer.resume_process(pid)
-                    self.suspended_pids.remove(pid)
-                    logging.info(f"Process with PID {pid} resumed. Removed from suspended_pids.")
-                else:
-                    logging.info(f"Attempting to suspend process with PID: {pid}")
-                    process_killer.suspend_process(pid)
-                    self.suspended_pids.add(pid)
-                    logging.info(f"Process with PID {pid} suspended. Added to suspended_pids.")
-                logging.debug(f"Current suspended PIDs: {self.suspended_pids}")
-        except Exception as e:
-            logging.error(f"Error in on_press: {e}", exc_info=True)
+    def set_hotkeys(self, kill_hotkey, suspend_hotkey):
+        self.kill_hotkey = keyboard.HotKey.parse(kill_hotkey)
+        self.suspend_hotkey = keyboard.HotKey.parse(suspend_hotkey)
+        
+        if self.listener:
+            self.stop()
+        
+        self.listener = keyboard.GlobalHotKeys({
+            kill_hotkey: self.on_kill_hotkey,
+            suspend_hotkey: self.on_suspend_hotkey
+        })
 
-    def on_release(self, key):
-        try:
-            self.current_keys.discard(key)
-            logging.debug(f"Key released: {key}")
-            logging.debug(f"Current keys after release: {self.current_keys}")
-        except Exception as e:
-            logging.error(f"Error in on_release: {e}", exc_info=True)
+    def on_kill_hotkey(self):
+        pid = get_focused_window_pid()
+        logging.info(f"Kill hotkey pressed. Attempting to kill process with PID: {pid}")
+        process_killer.force_kill_process(pid)
+
+    def on_suspend_hotkey(self):
+        pid = get_focused_window_pid()
+        logging.info(f"Suspend/Resume hotkey pressed. Focused window PID: {pid}")
+        if pid in self.suspended_pids:
+            logging.info(f"Attempting to resume process with PID: {pid}")
+            process_killer.resume_process(pid)
+            self.suspended_pids.remove(pid)
+            logging.info(f"Process with PID {pid} resumed. Removed from suspended_pids.")
+        else:
+            logging.info(f"Attempting to suspend process with PID: {pid}")
+            process_killer.suspend_process(pid)
+            self.suspended_pids.add(pid)
+            logging.info(f"Process with PID {pid} suspended. Added to suspended_pids.")
+        logging.debug(f"Current suspended PIDs: {self.suspended_pids}")
 
     def start(self):
-        logging.info("Starting hotkey listener...")
-        with self.listener:
-            self.listener.join()
+        if self.listener:
+            logging.info("Starting hotkey listener...")
+            self.listener.start()
+        else:
+            logging.warning("No hotkeys set. Use set_hotkeys() before starting.")
 
-def run_hotkey_handler():
-    handler = HotkeyHandler()
-    handler.start()
+    def stop(self):
+        if self.listener:
+            logging.info("Stopping hotkey listener...")
+            self.listener.stop()

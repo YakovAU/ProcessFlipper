@@ -1,15 +1,8 @@
-from window_handler import run_hotkey_handler
+from tray_app import run_tray_app
 import logging
 import sys
 
 def main():
-    print("Process Killer/Suspender is now running.")
-    print("Use the following hotkeys:")
-    print("Ctrl + Alt + F4: Kill focused window's process")
-    print("Ctrl + Alt + F3: Suspend/Resume focused window's process")
-    print("Press Ctrl+C to exit.")
-    print("Check the log file for detailed information.")
-    
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
@@ -28,14 +21,8 @@ def main():
     console_handler.setFormatter(console_formatter)
     root_logger.addHandler(console_handler)
     
-    try:
-        run_hotkey_handler()
-    except KeyboardInterrupt:
-        logging.info("KeyboardInterrupt received. Exiting...")
-    except Exception as e:
-        logging.error(f"An unexpected error occurred: {e}", exc_info=True)
-    finally:
-        print("\nExiting...")
+    logging.info("Starting Process Killer/Suspender tray application")
+    run_tray_app()
 
 if __name__ == "__main__":
     main()

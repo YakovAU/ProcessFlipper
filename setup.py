@@ -9,6 +9,8 @@ setup(
     install_requires=[
         'pynput',
         'pywin32',
+        'pystray',
+        'pillow',
     ],
     py_modules=['window_handler', 'main'],
     entry_points={
