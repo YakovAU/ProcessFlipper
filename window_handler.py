@@ -31,31 +31,25 @@ class HotkeyHandler:
         self.alt_pressed = False
 
     def set_hotkeys(self, kill_hotkey, suspend_hotkey):
-        self.kill_key = kill_hotkey.lower()
-        self.suspend_key = suspend_hotkey.lower()
+        self.kill_key = kill_hotkey
+        self.suspend_key = suspend_hotkey
         logging.info(f"Hotkeys set - Kill: Ctrl+Alt+{self.kill_key}, Suspend/Resume: Ctrl+Alt+{self.suspend_key}")
 
     def on_press(self, key):
-        try:
-            key_char = key.char.lower()
-        except AttributeError:
-            key_char = key
-
-        if key == keyboard.Key.ctrl:
+        if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
             self.ctrl_pressed = True
-        elif key == keyboard.Key.alt:
+        elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r):
             self.alt_pressed = True
         elif self.ctrl_pressed and self.alt_pressed:
-            if key_char == self.kill_key:
+            if key == self.kill_key:
                 self.on_kill_hotkey()
-            elif key_char == self.suspend_key:
+            elif key == self.suspend_key:
                 self.on_suspend_hotkey()
 
     def on_release(self, key):
-        if key == keyboard.Key.ctrl:
-            self.ctrl_pressed = False
-        elif key == keyboard.Key.alt:
-            self.alt_pressed = False
+        # Reset state when any key is released
+        self.ctrl_pressed = False
+        self.alt_pressed = False
 
     def on_kill_hotkey(self):
         pid = get_focused_window_pid()
@@ -78,12 +72,10 @@ class HotkeyHandler:
         logging.debug(f"Current suspended PIDs: {self.suspended_pids}")
 
     def start(self):
-        if self.kill_key and self.suspend_key:
-            logging.info("Starting hotkey listener...")
-            self.listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
-            self.listener.start()
-        else:
-            logging.warning("No hotkeys set. Use set_hotkeys() before starting.")
+        self.set_hotkeys(keyboard.Key.f3, keyboard.Key.f4)
+        logging.info("Starting hotkey listener...")
+        self.listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
+        self.listener.start()
 
     def stop(self):
         if self.listener:
