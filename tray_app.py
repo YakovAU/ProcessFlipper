@@ -5,6 +5,11 @@ from window_handler import HotkeyHandler
 import logging
 import tkinter as tk
 from tkinter import messagebox
+import base64
+import io
+
+# Import the icon data
+from icon_data import ICON_BASE64
 
 KILL_HOTKEY = '<ctrl>+<alt>+<f4>'
 SUSPEND_HOTKEY = '<ctrl>+<alt>+<f3>'
@@ -14,9 +19,11 @@ class TrayIcon:
         self.icon = None
         self.hotkey_handler = HotkeyHandler()
         self.hotkey_thread = None
+        self.icon_base64 = ICON_BASE64  # icon_data.py contains the icon data
 
     def create_image(self):
-        return Image.open('icon.png')
+        icon_data = base64.b64decode(self.icon_base64)
+        return Image.open(io.BytesIO(icon_data))
 
     def about(self):
         logging.info("Showing About information")
