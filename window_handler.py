@@ -3,6 +3,7 @@ import win32process
 from pynput import keyboard
 import process_killer
 import logging
+from critical_processes import CRITICAL_PROCESSES
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -54,21 +55,29 @@ class HotkeyHandler:
     def on_kill_hotkey(self):
         pid = get_focused_window_pid()
         logging.info(f"Kill hotkey pressed. Attempting to kill process with PID: {pid}")
+        process_name = process_killer.get_process_name(pid)
+        if process_name.lower() in (p.lower() for p in CRITICAL_PROCESSES):
+            logging.warning(f"Attempted to kill critical process {process_name} (PID {pid}). Operation aborted.")
+            return
         process_killer.force_kill_process(pid)
 
     def on_suspend_hotkey(self):
         pid = get_focused_window_pid()
         logging.info(f"Suspend/Resume hotkey pressed. Focused window PID: {pid}")
+        process_name = process_killer.get_process_name(pid)
+        if process_name.lower() in (p.lower() for p in CRITICAL_PROCESSES):
+            logging.warning(f"Attempted to suspend critical process {process_name} (PID {pid}). Operation aborted.")
+            return
         if pid in self.suspended_pids:
             logging.info(f"Attempting to resume process with PID: {pid}")
             process_killer.resume_process(pid)
             self.suspended_pids.remove(pid)
-            logging.info(f"Process with PID {pid} resumed. Removed from suspended_pids.")
+            logging.info(f"Process {process_name} with PID {pid} resumed. Removed from suspended_pids.")
         else:
             logging.info(f"Attempting to suspend process with PID: {pid}")
             process_killer.suspend_process(pid)
             self.suspended_pids.add(pid)
-            logging.info(f"Process with PID {pid} suspended. Added to suspended_pids.")
+            logging.info(f"Process {process_name} with PID {pid} suspended. Added to suspended_pids.")
         logging.debug(f"Current suspended PIDs: {self.suspended_pids}")
 
     def start(self):
