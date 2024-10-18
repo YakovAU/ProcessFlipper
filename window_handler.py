@@ -13,15 +13,6 @@ def get_focused_window_pid():
     _, pid = win32process.GetWindowThreadProcessId(hwnd)
     return pid
 
-from pynput import keyboard
-import process_killer
-import logging
-
-def get_focused_window_pid():
-    hwnd = win32gui.GetForegroundWindow()
-    _, pid = win32process.GetWindowThreadProcessId(hwnd)
-    return pid
-
 class HotkeyHandler:
     def __init__(self):
         self.suspended_pids = set()
@@ -48,9 +39,11 @@ class HotkeyHandler:
                 self.on_suspend_hotkey()
 
     def on_release(self, key):
-        # Reset state when any key is released
-        self.ctrl_pressed = False
-        self.alt_pressed = False
+        # Only reset the flag for the specific key that was released
+        if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+            self.ctrl_pressed = False
+        elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r):
+            self.alt_pressed = False
 
     def on_kill_hotkey(self):
         pid = get_focused_window_pid()

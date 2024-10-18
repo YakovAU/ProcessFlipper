@@ -1,0 +1,6 @@
+.aider*
+.idea/
+dist/
+build/
+__pycache__/
+ProcessKillerSuspender.egg-info/
