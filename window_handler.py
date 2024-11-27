@@ -28,22 +28,36 @@ class HotkeyHandler:
         logging.info(f"Hotkeys set - Kill: Ctrl+Alt+{self.kill_key}, Suspend/Resume: Ctrl+Alt+{self.suspend_key}")
 
     def on_press(self, key):
-        if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
-            self.ctrl_pressed = True
-        elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r):
-            self.alt_pressed = True
-        elif self.ctrl_pressed and self.alt_pressed:
-            if key == self.kill_key:
-                self.on_kill_hotkey()
-            elif key == self.suspend_key:
-                self.on_suspend_hotkey()
+        try:
+            # Update modifier key states
+            if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+                self.ctrl_pressed = True
+            elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r):
+                self.alt_pressed = True
+            # Only check for hotkeys if both Ctrl and Alt are pressed
+            elif self.ctrl_pressed and self.alt_pressed:
+                # Compare the actual key with our hotkeys
+                if hasattr(key, 'char'):  # For normal keys
+                    current_key = keyboard.KeyCode.from_char(key.char)
+                else:  # For special keys
+                    current_key = key
+                
+                if current_key == self.kill_key:
+                    self.on_kill_hotkey()
+                elif current_key == self.suspend_key:
+                    self.on_suspend_hotkey()
+        except Exception as e:
+            logging.error(f"Error in hotkey handling: {str(e)}")
 
     def on_release(self, key):
-        # Only reset the flag for the specific key that was released
-        if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
-            self.ctrl_pressed = False
-        elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r):
-            self.alt_pressed = False
+        try:
+            # Only reset the flag for the specific key that was released
+            if key in (keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
+                self.ctrl_pressed = False
+            elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r):
+                self.alt_pressed = False
+        except Exception as e:
+            logging.error(f"Error in key release handling: {str(e)}")
 
     def on_kill_hotkey(self):
         pid = get_focused_window_pid()
